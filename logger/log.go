@@ -31,6 +31,7 @@ type Logger struct {
 	level                     string // 日志级别
 	basePath                  string // 日志保存路径
 	info, warning, err, fatal *writer
+	isProd                    bool // 是否为生产环境
 }
 
 // 获取当前时间
@@ -86,8 +87,13 @@ func (l *Logger) printInfo(level string, format string, a ...interface{}) {
 	message := fmt.Sprintf(format, a...)
 	// fmt.Printf("[%s] [%s] [file:%s:%d] %v\n", getNowTime(), level, file, line, message)
 	message = fmt.Sprintf("[%s] [%s] [file:%s:%d] %v\n", getNowTime(), level, file, line, message)
-	fmt.Println(message)
-	l.writeFile(l.switchLevel(level), message)
+	if !l.isProd {
+		// 不是生产环境，输出到控制台
+		fmt.Println(message)
+	} else {
+		// 否则写入到日志文件
+		l.writeFile(l.switchLevel(level), message)
+	}
 }
 
 // Debug 最低级别调试用
@@ -146,7 +152,7 @@ type Config struct {
 }
 
 // NewLogger 构造函数
-func NewLogger(level string, basePath string) *Logger {
+func NewLogger(level string, basePath string, size int64, spliceType int, isProd bool) *Logger {
 	if level == "" {
 		level = "Info"
 	}
@@ -161,10 +167,10 @@ func NewLogger(level string, basePath string) *Logger {
 		}
 	}
 	fmt.Println(basePath)
-	info := newWriter(path.Join(basePath, "./info.log"))
-	warning := newWriter(path.Join(basePath, "./warning.log"))
-	err := newWriter(path.Join(basePath, "./error.log"))
-	fatal := newWriter(path.Join(basePath, "./fatal.log"))
+	info := newWriter(path.Join(basePath, "./info.log"), size, spliceType)
+	warning := newWriter(path.Join(basePath, "./warning.log"), size, spliceType)
+	err := newWriter(path.Join(basePath, "./error.log"), size, spliceType)
+	fatal := newWriter(path.Join(basePath, "./fatal.log"), size, spliceType)
 
 	return &Logger{
 		level,
@@ -173,5 +179,6 @@ func NewLogger(level string, basePath string) *Logger {
 		warning,
 		err,
 		fatal,
+		isProd,
 	}
 }
